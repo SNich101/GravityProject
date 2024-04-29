@@ -5,3 +5,7 @@ This code is repsonsible for all the raw data analysis and figure plotting for t
 - Plots of the experimental data
 - Plots of the modelled curved ontop of the experimental data
 
+NonLinear Drag model.py
+This is an example of how the trajectories for the pendulumn are plot numerically using the euler method, it produces,
+- A trajectory plot in space
+- A phase plot, modelling the change in velocity
