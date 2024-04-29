@@ -7,24 +7,22 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-#from scipy.optimise import Curve_fit
+from scipy.optimize import curve_fit
 
 
 # First import the neccesary data
 Data = pd.read_excel("./ExperimentalData.xlsx")
-ExpHighTime1 = Data["HighTime1"]
-ExpHighTime2 = Data["HighTime2"]
-ExpHighTime3 = Data["HighTime3"]
+ExpHighTime1 = Data["HighTime1"].dropna()
+ExpHighTime2 = Data["HighTime2"].dropna()
+ExpHighTime3 = Data["HighTime3"].dropna()
 
-ExpLowTime1 = Data["LowTime1"]
-ExpLowTime2 = Data["LowTime2"]
-ExpLowTime3 = Data["LowTime3"]
+ExpLowTime1 = Data["LowTime1"].dropna()
+ExpLowTime2 = Data["LowTime2"].dropna()
+ExpLowTime3 = Data["LowTime3"].dropna()
 
-ExpMassPosHigh = Data["MassPosHigh"]
-ExpMassPosLow = Data["MassPosLow"]
+ExpMassPosHigh = Data["MassPosHigh"].dropna()
+ExpMassPosLow = Data["MassPosLow"].dropna()
 
-ExpBallTime1 = ["AveFallSQ"]
-ExpBallHeights = ["Height"]
 
 
 # ---------------------------- Average the data and plot Time curves ---------------
@@ -210,7 +208,7 @@ for i in range(0,len(gUncertainties)):
 gFinal = gFinal/gTotal
 gFinalUnc = (gTotal)**-0.5
 
-print(f"Taking a weighted average, g = ( {round(gFinal/100,5)} +- {round(gFinalUnc/100,5)} )m/s**2")
+print(f"Taking a weighted average, g = ( {round(gFinal/100,5)} +- {round(gFinalUnc/100,5)} )m/s^2")
 
 # ---------------------------- Comparing with simulation ----------------------
 
@@ -252,7 +250,81 @@ plt.show()
 
 # ---------------------------Plot the ball drop curve ---------------------
 
+ExpBallHeights = Data["Height"].dropna()
+ExpBallTime1 = Data["FallTime1"].dropna()
+ExpBallTime2 = Data["FallTime2"].dropna()
+ExpBallTime3 = Data["FallTime3"].dropna()
 
+
+AverageTime = []
+AverageTSq = []
+TSqUnc = []
+TimeUnc = []
+
+# First average the fall times and prodoce a T^2 for each height
+for i in range(0,len(ExpBallHeights)):
+    AverageTime.append(0)
+    TimeUnc.append(0)
+    AverageTSq.append(0)
+    TSqUnc.append(0)
+    
+    # First take the average of the three points
+    AverageTime[i] = (ExpBallTime1[i] + ExpBallTime2[i] + ExpBallTime3[i])/3
+    
+    # Now find the deviation from the mean
+    Mean = AverageTime[i]
+    TimeUnc[i] = (ExpBallTime1[i] - Mean)**2 + (ExpBallTime2[i] - Mean)**2 + (ExpBallTime3[i] - Mean)**2
+    TimeUnc[i] = (TimeUnc[i]/3)**0.5
+    
+    # Now convert T -> T^2 
+    AverageTSq[i] = (AverageTime[i])**2
+    TSqUnc[i] = 2*(TimeUnc[i]/AverageTime[i]) # Percentage uncertainty
+    TSqUnc[i] = TSqUnc[i] * AverageTSq[i] # Convert to abs uncertainty
+    
+
+# Now plot the data alongside a straight line fit 
+def str_line(x,m,c):
+    return m*x + c # Straight line fit
+
+
+popt, pcov = curve_fit(str_line, ExpBallHeights, AverageTSq, sigma=TSqUnc)
+# popt = values for model, in order of entered into the function
+# pcov = varience of values
+Gradient = popt[0]
+GradientError = pcov[0,0]**0.5
+
+Intercept = popt[1]
+InterceptError = pcov[1,1]**0.5
+
+
+# Plotting the fitting curve
+x_line = np.linspace(ExpBallHeights.min(),ExpBallHeights.max(),100) # evenly spaced x values to use
+
+plt.title("Ball Drop")
+plt.xlabel("Height [m]")
+plt.ylabel("$T^2$ [s]")
+
+plt.errorbar(ExpBallHeights, AverageTSq, yerr = TSqUnc, marker = "x", color = "red", ls = "none", label = "Data")
+plt.plot(x_line, str_line(x_line,Gradient,Intercept),linestyle="--",color = "black", label = "straight line fit")
+plt.legend()
+
+plt.savefig("Ball Drop")
+
+# Now find the value for g 
+gBall = 2/Gradient
+
+# Now find the uncertainty
+gBallUnc = (GradientError/Gradient) * gBall
+
+# The final results
+print("")
+print(f"From the ball drop experiment the valeu of g = ( {round(gBall,5)} +- {round(gBallUnc,5)} )m/s^2")
+
+# Printing the values
+#print("Gradient = ", round(Gradient,10), "+-", round(GradientError,10))
+#print("Intercept = ", round(Intercept,8), "+-", round(InterceptError,2))
+    
+    
 
 
 
